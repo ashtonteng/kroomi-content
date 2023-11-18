@@ -1,0 +1,34 @@
+Format a list of bullet points in text format into JSON. Each bullet point will consist of one "action", and we need to produce a list of "protocol_actions". Each action needs to be separated into "title" and "description". Choose a "category" from the list [exercise, diet, supplement, behavior, treatment]. There is also a "source_timestamp", and if the original text has a timestamp add it here. If not leave it empty. Here is an example:
+
+input:
+
+Dim Artificial Lights at Night: After sunset, reduce exposure to bright artificial lights to boost melatonin production.
+
+Cool Sleeping Environment: Lower room temperature by at least 3 degrees during sleep.
+
+Magnesium Threonate Supplement: Take 145 milligrams before bedtime (optional).
+
+output:
+
+"protocol_actions": [
+      {
+        "name": "Dim Artificial Lights at Night",
+        "description": "After sunset, reduce exposure to bright artificial lights to boost melatonin production.",
+        "category": "behavior",
+        "source_timestamp": ""
+      },
+      {
+        "name": "Cool Sleeping Environment",
+        "description": "Lower room temperature by at least 3 degrees during sleep.",
+        "category": "behavior",
+        "source_timestamp": ""
+      },
+      {
+        "name": "Magnesium Threonate Supplement",
+        "description": "Take 145 milligrams before bedtime (optional).",
+        "category": "supplement",
+        "source_timestamp": ""
+      }
+    ]
+
+Output correct JSON. Do not change any of the text in the input, simply format it as JSON according to the example above.
