@@ -11,7 +11,8 @@ def extract_protocol(client, text: str) -> str:
                 "content": text
             }
         ],
-        model="gpt-4-1106-preview"
+        model="gpt-4-1106-preview",
+        temperature=0.0,
     )
     return chat_completion.choices[0].message.content
 
@@ -29,7 +30,8 @@ def refine_protocol(client, text: str) -> str:
                 "content": text
             }
         ],
-        model="gpt-4-1106-preview"
+        model="gpt-4-1106-preview",
+        temperature=0.0,
     )
     return chat_completion.choices[0].message.content
 
@@ -48,6 +50,7 @@ def format_protocol(client, text: str) -> str:
             }
         ],
         model="gpt-4-1106-preview",
-        response_format={"type": "json_object"}
+        temperature=0.0,
+        response_format={"type": "json_object"},
     )
     return chat_completion.choices[0].message.content
