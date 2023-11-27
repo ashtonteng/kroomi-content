@@ -1,3 +1,4 @@
+import math
 import os
 from youtube_transcript_api import YouTubeTranscriptApi
 from urllib.parse import urlparse, parse_qs
@@ -56,5 +57,6 @@ def get_transcript_from_youtube_video(video_id: str) -> str:
     output = ''
     for x in video_transcript:
         sentence = x['text']
-        output += f' {sentence}\n'
+        start = math.floor(float(x['start']))
+        output += f'{sentence} ({start})\n'
     return output
