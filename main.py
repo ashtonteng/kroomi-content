@@ -6,63 +6,75 @@ from protocol import *
 import openai
 
 
-def youtube_url_to_json(openai_client, url: str) -> str:
-    video_id = extract_youtube_video_id(url)
+def youtube_url_to_json(openai_client: openai.Client,
+                        youtube_url: str,
+                        extractor: bool = True,
+                        refiner: bool = False,
+                        formatter: bool = True,
+                        output_json: bool = True) -> None:
+    video_id = extract_youtube_video_id(youtube_url)
     metadata = get_metadata_youtube_video(video_id)
     title = metadata['title']
     channel = metadata['channel']
     description = metadata['description']
+    rewrite = False
 
     if os.path.exists(f'0_transcripts/{video_id}.txt'):
-        print("loading transcript for video:", video_id)
-        transcript = open(f'0_transcripts/{video_id}.txt', 'r').read()
+        response = open(f'0_transcripts/{video_id}.txt', 'r').read()
     else:
-        print("downloading transcript for video:", video_id)
-        transcript = get_transcript_from_youtube_video(video_id)
+        print("downloading transcript for video:", video_id, title)
+        response = get_transcript_from_youtube_video(video_id)
         with open(f'0_transcripts/{video_id}.txt', 'w') as f:
-            f.write(transcript)
+            f.write(response)
+        rewrite = True
 
-    if os.path.exists(f'1_extracted/{video_id}.txt'):
-        print("loading extracted protocol for video:", video_id)
-        extracted_protocol = open(f'1_extracted/{video_id}.txt', 'r').read()
-    else:
-        print("extracting protocol for video:", video_id)
-        extracted_protocol = extract_protocol(openai_client, transcript)
-        with open(f'1_extracted/{video_id}.txt', 'w') as f:
-            f.write(extracted_protocol)
+    if extractor:
+        if os.path.exists(f'1_extracted/{video_id}.txt') and not rewrite:
+            response = open(f'1_extracted/{video_id}.txt', 'r').read()
+        else:
+            print("extracting protocol for video:", video_id, title)
+            response = extract_protocol(openai_client, response)
+            with open(f'1_extracted/{video_id}.txt', 'w') as f:
+                f.write(response)
+            rewrite = True
 
-    # print("refining protocol for video id: ", video_id)
-    # # extracted_protocol = open(f'1_extracted/{video_id}.txt', 'r').read()
-    # refined_protocol = refine_protocol(openai_client, extracted_protocol)
-    # with open(f'2_refined/{video_id}.txt', 'w') as f:
-    #     f.write(refined_protocol)
+    if refiner:
+        if os.path.exists(f'2_refined/{video_id}.txt') and not rewrite:
+            response = open(f'2_refined/{video_id}.txt', 'r').read()
+        else:
+            print("refining protocol for video id: ", video_id, title)
+            response = refine_protocol(openai_client, response)
+            with open(f'2_refined/{video_id}.txt', 'w') as f:
+                f.write(response)
+            rewrite = True
 
-    if os.path.exists(f'3_formatted/{video_id}.json'):
-        print("loading formatted protocol for video:", video_id)
-        formatted_protocol = open(f'3_formatted/{video_id}.json', 'r').read()
-    else:
-        print("formatting protocol for video:", video_id)
-        formatted_protocol = format_protocol(openai_client, extracted_protocol)
-        with open(f'3_formatted/{video_id}.json', 'w') as f:
-            f.write(formatted_protocol)
+    if formatter:
+        if os.path.exists(f'3_formatted/{video_id}.json') and not rewrite:
+            response = open(f'3_formatted/{video_id}.json', 'r').read()
+        else:
+            print("formatting protocol for video:", video_id, title)
+            response = format_protocol(openai_client, response)
+            with open(f'3_formatted/{video_id}.json', 'w') as f:
+                f.write(response)
+            rewrite = True
 
-    formatted_protocol_actions_json = json.loads(formatted_protocol)
-    if 'protocol_actions' not in formatted_protocol_actions_json:
-        raise Exception('No protocol actions found')
-    protocol = Protocol(title, channel, description, video_id)
-    protocol.add_protocol_actions(formatted_protocol_actions_json['protocol_actions'])
-    formatted_json = protocol.to_json()
-
-    print(f"writing final json for video: {video_id}, "
-          f"{metadata['title']}")
-    with open(f'4_final_json/{video_id}.json', 'w') as f:
-        f.write(formatted_json)
+    if output_json:
+        if os.path.exists(f'4_final_json/{video_id}.json') and not rewrite:
+            return
+        formatted_protocol_actions_json = json.loads(response)
+        if 'protocol_actions' not in formatted_protocol_actions_json:
+            raise Exception('No protocol actions found')
+        protocol = Protocol(title, channel, description, video_id)
+        protocol.add_protocol_actions(formatted_protocol_actions_json['protocol_actions'])
+        formatted_json = protocol.to_json()
+        print("writing final json for video:", video_id, title)
+        with open(f'4_final_json/{video_id}.json', 'w') as f:
+            f.write(formatted_json)
 
 
 if __name__ == "__main__":
     load_dotenv()
-    openai_client = openai.Client()
-
+    client = openai.Client()
     directories_to_create = [
         '0_transcripts',
         '1_extracted',
@@ -80,4 +92,4 @@ if __name__ == "__main__":
     seed_urls = open('seed_urls.txt', 'r').readlines()
     for seed_url in seed_urls:
         url = seed_url.strip()
-        youtube_url_to_json(openai_client, url)
+        youtube_url_to_json(client, url)
