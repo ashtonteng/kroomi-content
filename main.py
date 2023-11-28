@@ -65,7 +65,9 @@ def youtube_url_to_json(openai_client: openai.Client,
         if 'protocol_actions' not in formatted_protocol_actions_json:
             raise Exception('No protocol actions found')
         protocol = Protocol(title, channel, description, video_id)
-        protocol.add_protocol_actions(formatted_protocol_actions_json['protocol_actions'])
+        protocol.add_protocol_actions(
+            formatted_protocol_actions_json['protocol_actions']
+        )
         formatted_json = protocol.to_json()
         print("writing final json for video:", video_id, title)
         with open(f'4_final_json/{video_id}.json', 'w') as f:
@@ -92,4 +94,8 @@ if __name__ == "__main__":
     seed_urls = open('seed_urls.txt', 'r').readlines()
     for seed_url in seed_urls:
         url = seed_url.strip()
-        youtube_url_to_json(client, url)
+        youtube_url_to_json(client, url,
+                            extractor=False,
+                            refiner=False,
+                            formatter=False,
+                            output_json=False)

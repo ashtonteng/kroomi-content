@@ -12,7 +12,7 @@ def extract_protocol(client, text: str) -> str:
             }
         ],
         model="gpt-4-1106-preview",
-        temperature=0.0,
+        temperature=0.3,
     )
     return chat_completion.choices[0].message.content
 
