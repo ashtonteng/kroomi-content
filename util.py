@@ -20,3 +20,24 @@ def format_protocol_json(name: str, author: str, description: str, source: str,
         indent=4,
     )
     return formatted_json
+
+
+def get_text_chunks(text: str, delimiter: str,
+                    num_delimiters_per_chunk: int,
+                    num_delimiters_overlap_between_chunks: int) -> List[str]:
+    """
+    Breaks down a string into chunks of text, delimited by a certain character.
+
+    :param text: the input text
+    :param delimiter: the delimiter used to split the text into chunks
+    :param num_delimiters_per_chunk: the number of delimiters per chunk
+    :param num_delimiters_overlap_between_chunks: the number of delimiters to overlap between chunks
+    :return: a list of text chunks
+    """
+    text_chunks = []
+    text_split = text.split(delimiter)
+    for i in range(0, len(text_split), num_delimiters_per_chunk):
+        text_chunk = delimiter.join(
+            text_split[i:i + num_delimiters_per_chunk + num_delimiters_overlap_between_chunks])
+        text_chunks.append(text_chunk)
+    return text_chunks
