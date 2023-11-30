@@ -5,11 +5,13 @@ from gpt import *
 from protocol import *
 import openai
 
+VIDEO_ASSISTANT_ID_MAP_FILE = 'video_assistant_id_map.tsv'
+
 
 def youtube_url_to_json(openai_client: openai.Client,
                         youtube_url: str,
                         extractor: bool = True,
-                        refiner: bool = False,
+                        timestamper: bool = False,
                         formatter: bool = True,
                         output_json: bool = True) -> None:
     video_id = extract_youtube_video_id(youtube_url)
@@ -19,34 +21,50 @@ def youtube_url_to_json(openai_client: openai.Client,
     description = metadata['description']
     rewrite = False
 
-    if os.path.exists(f'0_transcripts/{video_id}.txt'):
-        response = open(f'0_transcripts/{video_id}.txt', 'r').read()
-    else:
-        print("downloading transcript for video:", video_id, title)
-        response = get_transcript_from_youtube_video(video_id)
+    if not os.path.exists(f'0_transcripts/{video_id}.txt'):
+        print("downloading transcript with timestamps for video:", video_id, title)
+        response = get_transcript_from_youtube_video(video_id, timestamps=True)
         with open(f'0_transcripts/{video_id}.txt', 'w') as f:
+            f.write(response)
+
+    if os.path.exists(f'0_transcripts_no_timestamps/{video_id}.txt'):
+        response = open(f'0_transcripts_no_timestamps/{video_id}.txt', 'r').read()
+    else:
+        print("downloading transcript without timestamps for video:", video_id, title)
+        response = get_transcript_from_youtube_video(video_id, timestamps=False)
+        with open(f'0_transcripts_no_timestamps/{video_id}.txt', 'w') as f:
             f.write(response)
         rewrite = True
 
     if extractor:
-        if os.path.exists(f'1_extracted/{video_id}.txt') and not rewrite:
-            response = open(f'1_extracted/{video_id}.txt', 'r').read()
+        if os.path.exists(f'1_extracted_no_timestamps/{video_id}.txt') and not rewrite:
+            response = open(f'1_extracted_no_timestamps/{video_id}.txt', 'r').read()
         else:
             print("extracting protocol for video:", video_id, title)
             response = extract_protocol(openai_client, response)
-            with open(f'1_extracted/{video_id}.txt', 'w') as f:
+            with open(f'1_extracted_no_timestamps/{video_id}.txt', 'w') as f:
                 f.write(response)
             rewrite = True
 
-    if refiner:
-        if os.path.exists(f'2_refined/{video_id}.txt') and not rewrite:
-            response = open(f'2_refined/{video_id}.txt', 'r').read()
+    if timestamper:
+        if os.path.exists(f'2_timestamps_added/{video_id}.txt') and not rewrite:
+            response = open(f'2_timestamps_added/{video_id}.txt', 'r').read()
         else:
-            print("refining protocol for video id: ", video_id, title)
-            response = refine_protocol(openai_client, response)
-            with open(f'2_refined/{video_id}.txt', 'w') as f:
+            print("getting timestamps for video:", video_id, title)
+            # for each of the protocol actions, query assistant for the timestamp
+            actions = response.split('\n')
+            assistant_id, timestamps = assistant_timestamp_finder(client, f'0_transcripts/{video_id}.txt', actions)
+            with open(VIDEO_ASSISTANT_ID_MAP_FILE, 'a') as f:
+                f.write(f"{title}\t{video_id}\t{assistant_id}\n")
+            print("video_id", video_id, "assistant_id", assistant_id)
+            print(timestamps)
+            if len(timestamps) != len(actions):
+                raise Exception('Number of timestamps does not match number of chunks')
+            for i in range(len(actions)):
+                actions[i] = f"{actions[i]} ({timestamps[i]})"
+            response = '\n'.join(actions)
+            with open(f'2_timestamps_added/{video_id}.txt', 'w') as f:
                 f.write(response)
-            rewrite = True
 
     if formatter:
         if os.path.exists(f'3_formatted/{video_id}.json') and not rewrite:
@@ -79,8 +97,8 @@ if __name__ == "__main__":
     client = openai.Client()
     directories_to_create = [
         '0_transcripts',
-        '1_extracted',
-        '2_refined',
+        '0_transcripts_no_timestamps',
+        '1_extracted_no_timestamps',
         '3_formatted',
         '4_final_json'
     ]
@@ -95,7 +113,7 @@ if __name__ == "__main__":
     for seed_url in seed_urls:
         url = seed_url.strip()
         youtube_url_to_json(client, url,
-                            extractor=False,
-                            refiner=False,
-                            formatter=False,
-                            output_json=False)
+                            extractor=True,
+                            timestamper=True,
+                            formatter=True,
+                            output_json=True)
