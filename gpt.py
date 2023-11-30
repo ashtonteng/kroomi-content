@@ -1,5 +1,7 @@
 from typing import List, Tuple
 import time
+import requests
+import os
 
 
 def extract_protocol(client, text: str) -> str:
@@ -97,7 +99,6 @@ def assistant_timestamp_finder(client,
                 thread_id=thread.id,
                 run_id=run.id
             )
-            print(run.status)
             time.sleep(5)
         messages = client.beta.threads.messages.list(
             thread_id=thread.id
@@ -105,6 +106,7 @@ def assistant_timestamp_finder(client,
         response = messages.data[0].content[0].text.value
         print(chunk, response)
         responses.append(response)
+    delete_assistant(assistant.id)
     return assistant.id, responses
 
 
@@ -145,3 +147,17 @@ def format_protocol(client, text: str) -> str:
         response_format={"type": "json_object"},
     )
     return chat_completion.choices[0].message.content
+
+
+def delete_assistant(assistant_id: str) -> None:
+    api_key = os.getenv('OPENAI_API_KEY')
+    url = f'https://api.openai.com/v1/assistants/{assistant_id}'
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+        'OpenAI-Beta': 'assistants=v1'
+    }
+    response = requests.delete(url, headers=headers)
+    if response.status_code != 200:
+        raise Exception('Delete assistant failed')
+
