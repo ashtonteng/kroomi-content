@@ -99,6 +99,7 @@ def assistant_timestamp_finder(client,
                 thread_id=thread.id,
                 run_id=run.id
             )
+            print(run.status)
             time.sleep(5)
         messages = client.beta.threads.messages.list(
             thread_id=thread.id
