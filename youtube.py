@@ -40,12 +40,12 @@ def get_metadata_youtube_video(video_id: str) -> dict:
         title = response['items'][0]['snippet']['title']
         description = response['items'][0]['snippet']['description']
         channel = response['items'][0]['snippet']['channelTitle']
-        # get the first paragraph of the description only
         # TODO: summarize with GPT
-        description = description.split('\n')[0]
+        description_first_paragraph = description.split('\n')[0]
         return {
             'title': title,
             'description': description,
+            'description_first_paragraph': description_first_paragraph,
             'channel': channel
         }
     else:
@@ -53,14 +53,26 @@ def get_metadata_youtube_video(video_id: str) -> dict:
 
 
 def get_transcript_from_youtube_video(video_id: str,
-                                      timestamps: bool = False) -> str:
+                                      timestamps: bool = False,
+                                      description: str = None) -> str:
     video_transcript = YouTubeTranscriptApi.get_transcript(video_id)
-    output = ''
+    transcript = ''
     for x in video_transcript:
         sentence = x['text']
         start = math.floor(float(x['start']))
         if timestamps:
-            output += f'{sentence} ({start})\n'
+            transcript += f'{sentence} ({start})\n'
         else:
-            output += f'{sentence}\n'
-    return output
+            transcript += f'{sentence}\n'
+    # if description is provided, put the description before the output
+    if description:
+        transcript =\
+f"""DESCRIPTION
+
+{description}
+---
+TRANSCRIPT
+
+{transcript}
+"""
+    return transcript

@@ -19,11 +19,12 @@ def youtube_url_to_json(openai_client: openai.Client,
     title = metadata['title']
     channel = metadata['channel']
     description = metadata['description']
+    description_first_paragraph = metadata['description_first_paragraph']
     rewrite = False
 
     if not os.path.exists(f'0_transcripts/{video_id}.txt'):
         print("downloading transcript with timestamps for video:", video_id, title)
-        response = get_transcript_from_youtube_video(video_id, timestamps=True)
+        response = get_transcript_from_youtube_video(video_id, timestamps=True, description=description)
         with open(f'0_transcripts/{video_id}.txt', 'w') as f:
             f.write(response)
 
@@ -31,7 +32,7 @@ def youtube_url_to_json(openai_client: openai.Client,
         response = open(f'0_transcripts_no_timestamps/{video_id}.txt', 'r').read()
     else:
         print("downloading transcript without timestamps for video:", video_id, title)
-        response = get_transcript_from_youtube_video(video_id, timestamps=False)
+        response = get_transcript_from_youtube_video(video_id, timestamps=False, description=description)
         with open(f'0_transcripts_no_timestamps/{video_id}.txt', 'w') as f:
             f.write(response)
         rewrite = True
@@ -82,7 +83,7 @@ def youtube_url_to_json(openai_client: openai.Client,
         formatted_protocol_actions_json = json.loads(response)
         if 'protocol_actions' not in formatted_protocol_actions_json:
             raise Exception('No protocol actions found')
-        protocol = Protocol(title, channel, description, video_id)
+        protocol = Protocol(title, channel, description_first_paragraph, video_id)
         protocol.add_protocol_actions(
             formatted_protocol_actions_json['protocol_actions']
         )
