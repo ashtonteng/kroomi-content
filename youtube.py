@@ -52,11 +52,15 @@ def get_metadata_youtube_video(video_id: str) -> dict:
         raise Exception('No video found')
 
 
-def get_transcript_from_youtube_video(video_id: str) -> str:
+def get_transcript_from_youtube_video(video_id: str,
+                                      timestamps: bool = False) -> str:
     video_transcript = YouTubeTranscriptApi.get_transcript(video_id)
     output = ''
     for x in video_transcript:
         sentence = x['text']
         start = math.floor(float(x['start']))
-        output += f'{sentence} ({start})\n'
+        if timestamps:
+            output += f'{sentence} ({start})\n'
+        else:
+            output += f'{sentence}\n'
     return output
