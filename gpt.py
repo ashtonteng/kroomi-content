@@ -68,7 +68,7 @@ def assistant_extract_protocol(client, chunks: List[str]) -> str:
 
 def assistant_timestamp_finder(client,
                                filepath: str,
-                               chunks: List[str]) -> Tuple[str, List[str]]:
+                               actions: List[str]) -> Tuple[str, List[str]]:
     responses = []
     prompt = open('prompts/timestamp_finder.txt', 'r').read()
     file = client.files.create(
@@ -83,11 +83,13 @@ def assistant_timestamp_finder(client,
         model="gpt-4-1106-preview",
     )
     thread = client.beta.threads.create()
-    for chunk in chunks:
+    for action in actions:
+        if action.strip() == '':
+            continue
         _ = client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
-            content=chunk,
+            content=action,
         )
         run = client.beta.threads.runs.create(
             thread_id=thread.id,
@@ -105,7 +107,7 @@ def assistant_timestamp_finder(client,
             thread_id=thread.id
         )
         response = messages.data[0].content[0].text.value
-        print(chunk, response)
+        print(action, response)
         responses.append(response)
     delete_assistant(assistant.id)
     return assistant.id, responses

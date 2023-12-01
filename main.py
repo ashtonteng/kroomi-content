@@ -64,7 +64,7 @@ def youtube_url_to_json(openai_client: openai.Client,
             if len(timestamps) != len(actions):
                 raise Exception('Number of timestamps does not match number of chunks')
             for i in range(len(actions)):
-                actions[i] = f"{actions[i]} ({timestamps[i]})"
+                actions[i] = f"{actions[i]} {timestamps[i]}"
             response = '\n'.join(actions)
             with open(f'2_timestamps_added/{video_id}.txt', 'w') as f:
                 f.write(response)
