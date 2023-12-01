@@ -4,6 +4,8 @@ from util import *
 from gpt import *
 from protocol import *
 import openai
+import concurrent.futures
+import time
 
 VIDEO_ASSISTANT_ID_MAP_FILE = 'video_assistant_id_map.tsv'
 
@@ -11,7 +13,7 @@ VIDEO_ASSISTANT_ID_MAP_FILE = 'video_assistant_id_map.tsv'
 def youtube_url_to_json(openai_client: openai.Client,
                         youtube_url: str,
                         extractor: bool = True,
-                        timestamper: bool = False,
+                        timestamper: bool = True,
                         formatter: bool = True,
                         output_json: bool = True) -> None:
     video_id = extract_youtube_video_id(youtube_url)
@@ -107,14 +109,39 @@ if __name__ == "__main__":
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-    # url = input("Enter youtube url: ")
-    # youtube_url_to_json(openai_client, url)
-
-    seed_urls = open('seed_urls.txt', 'r').readlines()
-    for seed_url in seed_urls:
-        url = seed_url.strip()
+    def extract_one_url(url):
+        print('....extracting url:', url)
         youtube_url_to_json(client, url,
                             extractor=True,
                             timestamper=True,
                             formatter=True,
                             output_json=True)
+
+
+    def extract_seed_urls():
+        seed_urls = open('seed_urls.txt', 'r').readlines()
+        for seed_url in seed_urls:
+            url = seed_url.strip()
+            youtube_url_to_json(client, url,
+                                extractor=True,
+                                timestamper=True,
+                                formatter=True,
+                                output_json=True)
+
+    def parallel_extract_seed_urls(max_threads: int = 5):
+        seed_urls = open('seed_urls.txt', 'r').readlines()
+        seed_urls = [url.strip() for url in seed_urls]
+        seed_urls = list(set(seed_urls))
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+            # Submit tasks to the executor
+            futures = [executor.submit(extract_one_url, url) for url in seed_urls]
+            # Wait for all futures to complete (optional, if you need to process results)
+            for future in concurrent.futures.as_completed(futures):
+                # Handle exceptions or get results here if needed
+                try:
+                    future.result()
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+
+    parallel_extract_seed_urls(5)
