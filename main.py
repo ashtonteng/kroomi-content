@@ -56,6 +56,8 @@ def youtube_url_to_json(openai_client: openai.Client,
             print("getting timestamps for video:", video_id, title)
             # for each of the protocol actions, query assistant for the timestamp
             actions = response.split('\n')
+            # make sure to get rid of empty bullet points in actions
+            actions = [action for action in actions if action.strip() != '']
             assistant_id, timestamps = assistant_timestamp_finder(client, f'0_transcripts/{video_id}.txt', actions)
             with open(VIDEO_ASSISTANT_ID_MAP_FILE, 'a') as f:
                 f.write(f"{title}\t{video_id}\t{assistant_id}\n")
@@ -110,7 +112,6 @@ if __name__ == "__main__":
             os.makedirs(directory)
 
     def extract_one_url(url):
-        print('....extracting url:', url)
         youtube_url_to_json(client, url,
                             extractor=True,
                             timestamper=True,

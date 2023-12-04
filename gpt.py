@@ -1,7 +1,12 @@
 from typing import List, Tuple
 import time
+import logging
 import requests
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+MODEL = "gpt-4-1106-preview" #"gpt-3.5-turbo-1106"
+logging.basicConfig(level=logging.INFO)
 
 
 def extract_protocol(client, text: str) -> str:
@@ -17,7 +22,7 @@ def extract_protocol(client, text: str) -> str:
                 "content": text
             }
         ],
-        model="gpt-4-1106-preview",
+        model=MODEL,
         temperature=0.3,
     )
     return chat_completion.choices[0].message.content
@@ -36,7 +41,7 @@ def assistant_extract_protocol(client, chunks: List[str]) -> str:
         instructions=extractor_prompt,
         # tools=[{"type": "retrieval"}],
         # file_ids=[file.id],
-        model="gpt-4-1106-preview",
+        model=MODEL,
     )
     thread = client.beta.threads.create()
 
@@ -66,10 +71,48 @@ def assistant_extract_protocol(client, chunks: List[str]) -> str:
     return '\n'.join(responses)
 
 
+def get_timestamp_for_action(client, assistant_id, action) -> str:
+    """
+    the timestamp returned is a string in the format (seconds).
+    """
+    logger = logging.getLogger("gpt")
+    logger.info(f"!!!!!!!!!!!!!!!!!!! getting timestamp for action {action}")
+    try:
+        thread = client.beta.threads.create()
+        _ = client.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=action,
+        )
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant_id,
+        )
+        while run.status != 'completed':
+            run = client.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+            time.sleep(5)
+        messages = client.beta.threads.messages.list(
+            thread_id=thread.id
+        )
+        response = messages.data[0].content[0].text.value
+        logger.info(f"{action} {response}")
+        print(f"{action} {response}")
+        return response
+    except Exception as e:
+        logger.error(f"could not get timestamp for action {action}: {e}")
+        # return a timestamp of 0 if there is an error, this is not critical
+        return "(0)"
+
+
 def assistant_timestamp_finder(client,
                                filepath: str,
-                               actions: List[str]) -> Tuple[str, List[str]]:
-    responses = []
+                               actions: List[str],
+                               parallel: bool = True) -> Tuple[str, List[str]]:
+    logger = logging.getLogger("gpt")
+
     prompt = open('prompts/timestamp_finder.txt', 'r').read()
     file = client.files.create(
         file=open(filepath, 'rb'),
@@ -80,37 +123,34 @@ def assistant_timestamp_finder(client,
         instructions=prompt,
         tools=[{"type": "retrieval"}],
         file_ids=[file.id],
-        model="gpt-4-1106-preview",
+        model=MODEL,
     )
-    thread = client.beta.threads.create()
-    for action in actions:
-        if action.strip() == '':
-            continue
-        _ = client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=action,
-        )
-        run = client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=assistant.id,
-            # instructions=extractor_prompt,
-        )
-        while run.status != 'completed':
-            run = client.beta.threads.runs.retrieve(
-                thread_id=thread.id,
-                run_id=run.id
-            )
-            print(run.status)
-            time.sleep(5)
-        messages = client.beta.threads.messages.list(
-            thread_id=thread.id
-        )
-        response = messages.data[0].content[0].text.value
-        print(action, response)
-        responses.append(response)
+
+    logger.info(f"created assistant {assistant.id} for timestamp finding")
+
+    if parallel:
+        # Initialize a dictionary to store results
+        results_dict = {}
+        with ThreadPoolExecutor(max_workers=len(actions)) as executor:
+            # Submit tasks
+            future_to_index = {executor.submit(get_timestamp_for_action, client,
+                                               assistant.id, action): i for i, action in enumerate(actions)}
+            # Retrieve results as they are completed
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                result = future.result()
+                logger.info(f"got result for action {index} {actions[index]}: {result}")
+                results_dict[index] = result
+        # Order results based on the original actions list
+        timestamps = [results_dict[i] for i in range(len(actions))]
+    else:
+        timestamps = []
+        for action in actions:
+            timestamp = get_timestamp_for_action(client, assistant.id, action)
+            timestamps.append(timestamp)
+
     delete_assistant(assistant.id)
-    return assistant.id, responses
+    return assistant.id, timestamps
 
 
 def refine_protocol(client, text: str) -> str:
@@ -126,7 +166,7 @@ def refine_protocol(client, text: str) -> str:
                 "content": text
             }
         ],
-        model="gpt-4-1106-preview",
+        model=MODEL,
         temperature=0.0,
     )
     return chat_completion.choices[0].message.content
@@ -145,7 +185,7 @@ def format_protocol(client, text: str) -> str:
                 "content": text
             }
         ],
-        model="gpt-4-1106-preview",
+        model=MODEL,
         temperature=0.0,
         response_format={"type": "json_object"},
     )
