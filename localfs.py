@@ -1,11 +1,11 @@
 import os
 
-LOCAL_TRANSCRIPTS_DIR = '0_transcripts'
-LOCAL_TRANSCRIPTS_NO_TIMESTAMPS_DIR = '0_transcripts_no_timestamps'
-LOCAL_EXTRACTED_NO_TIMESTAMPS_DIR = '1_extracted_no_timestamps'
-LOCAL_TIMESTAMPS_ADDED_DIR = '2_timestamps_added'
-LOCAL_FORMATTED_DIR = '3_formatted'
-LOCAL_FINAL_JSON_DIR = '4_final_json'
+TRANSCRIPTS_DIR = '0_transcripts'
+TRANSCRIPTS_NO_TIMESTAMPS_DIR = '0_transcripts_no_timestamps'
+EXTRACTED_NO_TIMESTAMPS_DIR = '1_extracted_no_timestamps'
+TIMESTAMPS_ADDED_DIR = '2_timestamps_added'
+FORMATTED_DIR = '3_formatted'
+FINAL_JSON_DIR = '4_final_json'
 
 
 def get_saved_file_if_exists(dir: str, filename: str) -> str:
