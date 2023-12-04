@@ -14,7 +14,7 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
-              Resource: arn:aws:s3:::kroomi-data/*
+              Resource: arn:aws:s3:::kroomi-content/*
 
   ExtractProtocolYoutubeUrlFunctionLogGroup:
     Type: AWS::Logs::LogGroup

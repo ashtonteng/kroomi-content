@@ -1,12 +1,13 @@
 from typing import List, Tuple
 import time
 import logging
+import tempfile
 import requests
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 MODEL = "gpt-4-1106-preview" #"gpt-3.5-turbo-1106"
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 
 def extract_protocol(client, text: str) -> str:
@@ -28,55 +29,11 @@ def extract_protocol(client, text: str) -> str:
     return chat_completion.choices[0].message.content
 
 
-# TODO: currently deprecated due to poor performance
-def assistant_extract_protocol(client, chunks: List[str]) -> str:
-    responses = []
-    extractor_prompt = open('prompts/extractor.txt', 'r').read()
-    # file = client.files.create(
-    #     file=open('...', 'rb'),
-    #     purpose="assistants",
-    # )
-    assistant = client.beta.assistants.create(
-        name="Video Transcript Health Actions Extractor",
-        instructions=extractor_prompt,
-        # tools=[{"type": "retrieval"}],
-        # file_ids=[file.id],
-        model=MODEL,
-    )
-    thread = client.beta.threads.create()
-
-    # TODO: parallelize this
-    for chunk in chunks:
-        _ = client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=chunk,
-        )
-        run = client.beta.threads.runs.create(
-            thread_id=thread.id,
-            assistant_id=assistant.id,
-            # instructions=extractor_prompt,
-        )
-        while run.status != 'completed':
-            run = client.beta.threads.runs.retrieve(
-                thread_id=thread.id,
-                run_id=run.id
-            )
-            print(run.status)
-            time.sleep(5)
-        messages = client.beta.threads.messages.list(
-            thread_id=thread.id
-        )
-        responses.append(messages.data[0].content[0].text.value)
-    return '\n'.join(responses)
-
-
 def get_timestamp_for_action(client, assistant_id, action) -> str:
     """
     the timestamp returned is a string in the format (seconds).
     """
     logger = logging.getLogger("gpt")
-    logger.info(f"!!!!!!!!!!!!!!!!!!! getting timestamp for action {action}")
     try:
         thread = client.beta.threads.create()
         _ = client.beta.threads.messages.create(
@@ -108,14 +65,19 @@ def get_timestamp_for_action(client, assistant_id, action) -> str:
 
 
 def assistant_timestamp_finder(client,
-                               filepath: str,
+                               transcript_with_timestamps: str,
                                actions: List[str],
                                parallel: bool = True) -> Tuple[str, List[str]]:
     logger = logging.getLogger("gpt")
 
+    # first make a temporary file from the transcript for upload
+    temp_transcript_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+    temp_transcript_file.write(transcript_with_timestamps)
+    temp_transcript_filepath = temp_transcript_file.name
+
     prompt = open('prompts/timestamp_finder.txt', 'r').read()
     file = client.files.create(
-        file=open(filepath, 'rb'),
+        file=open(temp_transcript_filepath, 'rb'),
         purpose="assistants",
     )
     assistant = client.beta.assistants.create(
@@ -149,6 +111,9 @@ def assistant_timestamp_finder(client,
             timestamp = get_timestamp_for_action(client, assistant.id, action)
             timestamps.append(timestamp)
 
+    # clean up file and assistant
+    temp_transcript_file.close()
+    os.remove(temp_transcript_filepath)
     delete_assistant(assistant.id)
     return assistant.id, timestamps
 
