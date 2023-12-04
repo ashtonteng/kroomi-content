@@ -8,25 +8,25 @@ FORMATTED_DIR = '3_formatted'
 FINAL_JSON_DIR = '4_final_json'
 
 
-def get_saved_file_if_exists(dir: str, filename: str) -> str:
+def get_saved_file_if_exists(dirname: str, filename: str) -> str:
     """
-    :param dir: directory to look in
+    :param dirname: directory to look in
     :param filename: filename to look for
     :return: the file contents if it exists, otherwise None
     """
-    if os.path.exists(f'{dir}/{filename}.txt'):
-        return open(f'{dir}/{filename}.txt', 'r').read()
+    if os.path.exists(f'{dirname}/{filename}.txt'):
+        return open(f'{dirname}/{filename}.txt', 'r').read()
     else:
         return None
 
 
-def write_saved_file(dir: str, filename: str, contents: str) -> None:
+def write_saved_file(dirname: str, filename: str, contents: str) -> None:
     """
-    :param dir: directory to write to
+    :param dirname: directory to write to
     :param filename: filename to write to
     :param contents: contents to write
     :return: None
     """
-    with open(f'{dir}/{filename}.txt', 'w') as f:
+    with open(f'{dirname}/{filename}.txt', 'w') as f:
         f.write(contents)
 
