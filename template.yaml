@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ExtractProtocolYoutubeUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: extract.extract_protocol_youtube_url
+      Runtime: python3.11
+      CodeUri: lambda/
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: arn:aws:s3:::kroomi-data/*
+
+  ExtractProtocolYoutubeUrlFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ExtractProtocolYoutubeUrlFunction}"
+      RetentionInDays: 30
+
+Outputs:
+  ExtractProtocolYoutubeUrlFunctionArn:
+    Description: "ExtractProtocolYoutubeUrlFunction ARN"
+    Value: !GetAtt ExtractProtocolYoutubeUrlFunction.Arn
