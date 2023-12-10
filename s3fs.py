@@ -19,12 +19,21 @@ def get_saved_file_if_exists(dirname: str, filename: str) -> str:
     :return: the file contents if it exists, otherwise None
     """
     s3 = boto3.client('s3')
-    try:
-        response = s3.get_object(Bucket=BUCKET_NAME, Key=f'{dirname}/{filename}.txt')
-        return response['Body'].read().decode('utf-8')
-    except Exception as e:
-        logging.error(f"could not get file {filename} from s3: {e}")
-        return None
+    filepath = f'{dirname}/{filename}.txt'
+
+    # Check if the file exists in the S3 bucket
+    response = s3.list_objects_v2(Bucket=BUCKET_NAME, Prefix=filepath)
+
+    # If 'Contents' key is in the response and it's not empty, the file exists
+    if 'Contents' in response and len(response['Contents']) > 0:
+        # File exists, retrieve it
+        file_object = s3.get_object(Bucket=BUCKET_NAME, Key=filepath)
+        file_content = file_object['Body'].read().decode('utf-8')
+        return file_content
+    else:
+        # File does not exist
+        print(f"{filepath} does not exist, creating...")
+        return ""
 
 
 def write_saved_file(dirname: str, filename: str, contents: str) -> None:
@@ -35,9 +44,11 @@ def write_saved_file(dirname: str, filename: str, contents: str) -> None:
     :return: None
     """
     s3 = boto3.client('s3')
+    filepath = f'{dirname}/{filename}.txt'
     try:
-        s3.put_object(Bucket=BUCKET_NAME, Key=f'{dirname}/{filename}.txt', Body=contents)
+        s3.put_object(Bucket=BUCKET_NAME, Key=filepath, Body=contents)
     except Exception as e:
-        logging.error(f"could not write file {filename} to s3: {e}")
+        logging.error(f"could not write file {filepath} to s3: {e}")
+        raise e
 
 

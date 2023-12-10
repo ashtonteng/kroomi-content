@@ -71,9 +71,9 @@ def assistant_timestamp_finder(client,
     logger = logging.getLogger("gpt")
 
     # first make a temporary file from the transcript for upload
-    temp_transcript_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
-    temp_transcript_file.write(transcript_with_timestamps)
-    temp_transcript_filepath = temp_transcript_file.name
+    with tempfile.NamedTemporaryFile(mode='w', suffix=".txt", delete=False) as f:
+        f.write(transcript_with_timestamps)
+        temp_transcript_filepath = f.name
 
     prompt = open('prompts/timestamp_finder.txt', 'r').read()
     file = client.files.create(
@@ -112,7 +112,6 @@ def assistant_timestamp_finder(client,
             timestamps.append(timestamp)
 
     # clean up file and assistant
-    temp_transcript_file.close()
     os.remove(temp_transcript_filepath)
     delete_assistant(assistant.id)
     return assistant.id, timestamps

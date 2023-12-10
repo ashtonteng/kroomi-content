@@ -14,7 +14,7 @@ VIDEO_ASSISTANT_ID_MAP_FILE = 'video_assistant_id_map.tsv'
 def youtube_url_to_json_local(
         openai_client: openai.Client,
         youtube_url: str,
-        file_system: str = 'local',
+        file_system: str = 's3',
         extractor: bool = True,
         timestamper: bool = True,
         formatter: bool = True,
